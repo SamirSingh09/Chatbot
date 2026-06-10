@@ -1,0 +1,43 @@
+name: Deploy Frontend to Azure App Service
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "UI/**"
+      - ".github/workflows/deploy-frontend-azure.yml"
+
+env:
+  AZURE_WEBAPP_NAME: chatbot-rag-ui-demo
+  NODE_VERSION: "20"
+  VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: UI/package-lock.json
+
+      - name: Build frontend
+        working-directory: UI
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy frontend
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
+          package: UI/dist
