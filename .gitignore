@@ -1,0 +1,25 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# FastAPI local RAG data and uploaded files
+BE/data/
+
+# Node / React
+UI/node_modules/
+UI/dist/
+
+# Logs and local OS/editor files
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
