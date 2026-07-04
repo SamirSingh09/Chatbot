@@ -1,9 +1,9 @@
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import get_settings
-from app.rag_service import RagService
-from app.schemas import ChatRequest, ChatResponse, DocumentInfo, UploadResponse
+from .config import get_settings
+from .rag_service import RagService
+from .schemas import ChatRequest, ChatResponse, DocumentInfo, UploadResponse
 
 
 settings = get_settings()
