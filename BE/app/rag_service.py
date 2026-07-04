@@ -12,9 +12,9 @@ from openai import AsyncOpenAI
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-from app.config import Settings
-from app.document_loader import SUPPORTED_EXTENSIONS, extract_text
-from app.schemas import DocumentInfo, SourceChunk
+from .config import Settings
+from .document_loader import SUPPORTED_EXTENSIONS, extract_text
+from .schemas import DocumentInfo, SourceChunk
 
 
 @dataclass
