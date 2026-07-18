@@ -40,7 +40,7 @@ function App() {
   const sessionIdRef = useRef(crypto.randomUUID());
   const [messages, setMessages] = useState(starterMessages);
   const [prompt, setPrompt] = useState("");
-  const [mode, setMode] = useState("document");
+  const [mode, setMode] = useState("generic");
   const [isLoading, setIsLoading] = useState(false);
   const [uploads, setUploads] = useState([]);
   const [uploadError, setUploadError] = useState("");
@@ -409,13 +409,15 @@ function App() {
           )}
         </div>
 
-        <div className="suggestions" aria-label="Prompt suggestions">
-          {suggestions.map((suggestion) => (
-            <button type="button" key={suggestion} onClick={() => sendMessage(suggestion)} disabled={!userName}>
-              {suggestion}
-            </button>
-          ))}
-        </div>
+        {mode === "document" && (
+          <div className="suggestions" aria-label="Prompt suggestions">
+            {suggestions.map((suggestion) => (
+              <button type="button" key={suggestion} onClick={() => sendMessage(suggestion)} disabled={!userName}>
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
 
         <form className="composer" onSubmit={handleSubmit}>
           <button className="icon-button" type="button" aria-label="Attach document" onClick={() => fileInputRef.current?.click()}>
