@@ -333,10 +333,6 @@ function App() {
 
       <section className="chat-area" aria-label="Chat workspace">
         <header className="topbar">
-          <div className="search-box">
-            <Search size={18} />
-            <input type="search" placeholder="Search current conversation" />
-          </div>
           <div className="status-pill">
             <Check size={15} />
             {activeContext}
