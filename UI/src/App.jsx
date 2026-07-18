@@ -409,13 +409,15 @@ function App() {
           )}
         </div>
 
-        <div className="suggestions" aria-label="Prompt suggestions">
-          {suggestions.map((suggestion) => (
-            <button type="button" key={suggestion} onClick={() => sendMessage(suggestion)} disabled={!userName}>
-              {suggestion}
-            </button>
-          ))}
-        </div>
+        {mode === "document" && (
+          <div className="suggestions" aria-label="Prompt suggestions">
+            {suggestions.map((suggestion) => (
+              <button type="button" key={suggestion} onClick={() => sendMessage(suggestion)} disabled={!userName}>
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
 
         <form className="composer" onSubmit={handleSubmit}>
           <button className="icon-button" type="button" aria-label="Attach document" onClick={() => fileInputRef.current?.click()}>
