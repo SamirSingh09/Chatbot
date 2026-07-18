@@ -333,10 +333,6 @@ function App() {
 
       <section className="chat-area" aria-label="Chat workspace">
         <header className="topbar">
-          <div className="search-box">
-            <Search size={18} />
-            <input type="search" placeholder="Search current conversation" />
-          </div>
           <div className="status-pill">
             <Check size={15} />
             {activeContext}
@@ -379,7 +375,7 @@ function App() {
                   <strong>{message.role === "assistant" ? "Keli Assistant" : userName || "You"}</strong>
                   <span>{message.time}</span>
                 </div>
-                <p>{message.text}</p>
+                {renderMessageText(message.text)}
                 {message.sources?.length > 0 && (
                   <div className="source-list">
                     {message.sources.map((source) => (
@@ -454,6 +450,49 @@ function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function renderMessageText(text) {
+  if (!text) return null;
+
+  // Simple renderer: handle fenced code blocks ```lang\n...``` and plain paragraphs
+  const parts = [];
+  let rest = text;
+  const codeBlockRe = /```([a-zA-Z0-9-_]*)\n([\s\S]*?)```/m;
+
+  while (true) {
+    const m = rest.match(codeBlockRe);
+    if (!m) break;
+    const before = rest.slice(0, m.index);
+    if (before) parts.push({ type: 'text', content: before });
+    parts.push({ type: 'code', lang: m[1], content: m[2] });
+    rest = rest.slice(m.index + m[0].length);
+  }
+  if (rest) parts.push({ type: 'text', content: rest });
+
+  return parts.map((p, idx) => {
+    if (p.type === 'code') {
+      return (
+        <pre key={idx}>
+          <code>{p.content}</code>
+        </pre>
+      );
+    }
+
+    // For text parts, split into paragraphs and preserve single newlines as <br />
+    return p.content
+      .split(/\n{2,}/)
+      .map((para, j) => (
+        <p key={`${idx}-${j}`}>
+          {para.split('\n').map((line, k, arr) => (
+            <span key={k}>
+              {line}
+              {k < arr.length - 1 && <br />}
+            </span>
+          ))}
+        </p>
+      ));
+  });
 }
 
 function getTime() {
