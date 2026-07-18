@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import shutil
 import uuid
 import re
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -134,6 +136,57 @@ class RagService:
         )
         return response.choices[0].message.content or "", self.settings.openai_model
 
+    async def stream_answer(
+        self,
+        question: str,
+        sources: list[SourceChunk],
+        use_documents: bool = True,
+    ) -> AsyncIterator[tuple[str, str | None]]:
+        if not use_documents:
+            async for token in self._stream_without_documents(question):
+                yield token, self.settings.openai_model if self.settings.openai_api_key else None
+            return
+
+        if not sources:
+            async for token in self._stream_text("I could not find relevant information in the uploaded documents."):
+                yield token, None
+            return
+
+        if not self.settings.openai_api_key:
+            answer = self._extractive_answer(question, sources)
+            async for token in self._stream_text(answer):
+                yield token, None
+            return
+
+        context = "\n\n".join(
+            f"[Source: {source.filename}, chunk {source.chunk_id}]\n{source.text}"
+            for source in sources
+        )
+        client = AsyncOpenAI(api_key=self.settings.openai_api_key)
+        stream = await client.chat.completions.create(
+            model=self.settings.openai_model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a helpful RAG chatbot. Answer only from the supplied context. "
+                        "Read the context carefully because field names may be abbreviated, such as Mob for mobile. "
+                        "If the answer is not in the context, say you do not know."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"Context:\n{context}\n\nQuestion: {question}",
+                },
+            ],
+            temperature=0.2,
+            stream=True,
+        )
+        async for chunk in stream:
+            token = chunk.choices[0].delta.content or ""
+            if token:
+                yield token, self.settings.openai_model
+
     async def _answer_without_documents(self, question: str) -> tuple[str, str | None]:
         if not self.settings.openai_api_key:
             return (
@@ -154,6 +207,38 @@ class RagService:
             temperature=0.4,
         )
         return response.choices[0].message.content or "", self.settings.openai_model
+
+    async def _stream_without_documents(self, question: str) -> AsyncIterator[str]:
+        if not self.settings.openai_api_key:
+            async for token in self._stream_text(
+                "OPENAI_API_KEY is not configured, so I cannot generate a generic LLM answer yet."
+            ):
+                yield token
+            return
+
+        client = AsyncOpenAI(api_key=self.settings.openai_api_key)
+        stream = await client.chat.completions.create(
+            model=self.settings.openai_model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful general-purpose assistant. Answer clearly and concisely.",
+                },
+                {"role": "user", "content": question},
+            ],
+            temperature=0.4,
+            stream=True,
+        )
+        async for chunk in stream:
+            token = chunk.choices[0].delta.content or ""
+            if token:
+                yield token
+
+    async def _stream_text(self, text: str) -> AsyncIterator[str]:
+        words = text.split(" ")
+        for index, word in enumerate(words):
+            yield word if index == 0 else f" {word}"
+            await asyncio.sleep(0)
 
     def _extractive_answer(self, question: str, sources: list[SourceChunk]) -> str:
         context = "\n".join(source.text for source in sources)

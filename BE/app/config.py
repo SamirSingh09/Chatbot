@@ -1,7 +1,5 @@
 from functools import lru_cache
-import os
 from pathlib import Path
-import dotenv
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -10,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
-    openai_api_key: str = os.getenv("OPENAI_API_KEY") or dotenv.get_key(BASE_DIR / ".env", "OPENAI_API_KEY")
+    openai_api_key: str | None = None
     openai_model: str = "gpt-4o-mini"
     app_host: str = "127.0.0.1"
     app_port: int = 8000
@@ -33,5 +31,4 @@ def get_settings() -> Settings:
     settings = Settings()
     settings.upload_dir.mkdir(parents=True, exist_ok=True)
     settings.data_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Settings loaded: {settings}")   
     return settings

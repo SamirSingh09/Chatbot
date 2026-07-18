@@ -6,6 +6,9 @@ class ChatRequest(BaseModel):
     top_k: int = Field(default=4, ge=1, le=10)
     use_documents: bool = True
     session_id: str | None = None
+    user_name: str | None = None
+    user_email: str | None = None
+    user_phone: str | None = None
 
 
 class SourceChunk(BaseModel):
@@ -32,3 +35,19 @@ class DocumentInfo(BaseModel):
     document_id: str
     filename: str
     chunks: int
+
+
+class UserActivity(BaseModel):
+    timestamp: str
+    session_id: str | None = None
+    user_name: str | None = None
+    user_email: str | None = None
+    user_phone: str | None = None
+    question: str
+    used_documents: bool
+
+
+class UserStats(BaseModel):
+    total_messages: int
+    unique_users: int
+    recent_activity: list[UserActivity]

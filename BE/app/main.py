@@ -1,13 +1,15 @@
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
+from .analytics_service import AnalyticsService
 from .config import get_settings
 from .rag_service import RagService
-from .schemas import ChatRequest, ChatResponse, DocumentInfo, UploadResponse
+from .schemas import ChatRequest, ChatResponse, DocumentInfo, UploadResponse, UserStats
 
 
 settings = get_settings()
 rag_service = RagService(settings)
+analytics_service = AnalyticsService(settings.data_dir)
 
 app = FastAPI(
     title="RAG Chatbot API",
@@ -61,4 +63,10 @@ def clear_documents() -> dict[str, str]:
 async def chat(request: ChatRequest) -> ChatResponse:
     sources = rag_service.retrieve(request.question, request.top_k) if request.use_documents else []
     answer, used_model = await rag_service.answer(request.question, sources, request.use_documents)
+    analytics_service.log_chat(request)
     return ChatResponse(answer=answer, sources=sources, used_model=used_model)
+
+
+@app.get("/analytics/users", response_model=UserStats)
+def user_stats() -> UserStats:
+    return analytics_service.get_stats()
