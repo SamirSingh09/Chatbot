@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bot,
   Check,
@@ -37,18 +37,43 @@ const suggestions = [
 
 function App() {
   const fileInputRef = useRef(null);
+  const sessionIdRef = useRef(crypto.randomUUID());
   const [messages, setMessages] = useState(starterMessages);
   const [prompt, setPrompt] = useState("");
   const [mode, setMode] = useState("document");
   const [isLoading, setIsLoading] = useState(false);
   const [uploads, setUploads] = useState([]);
   const [uploadError, setUploadError] = useState("");
+  const [userName, setUserName] = useState("");
+  const [pendingUserName, setPendingUserName] = useState("");
+  const [userStats, setUserStats] = useState(null);
+  const [historyError, setHistoryError] = useState("");
 
   const activeContext = useMemo(() => {
+    if (!userName) return "Enter your name to start";
     if (mode === "document" && uploads.length === 0) return "Waiting for a document";
     if (mode === "document") return `${uploads.length} document${uploads.length > 1 ? "s" : ""} ready`;
     return "Generic chat enabled";
-  }, [mode, uploads.length]);
+  }, [mode, uploads.length, userName]);
+
+  const loadUserHistory = async () => {
+    try {
+      setHistoryError("");
+      const response = await fetch(`${API_BASE_URL}/analytics/users`);
+      if (!response.ok) {
+        const error = await readApiError(response);
+        throw new Error(error);
+      }
+      const result = await response.json();
+      setUserStats(result);
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : "Unable to load user history");
+    }
+  };
+
+  useEffect(() => {
+    loadUserHistory();
+  }, []);
 
   const handleUpload = async (event) => {
     const files = Array.from(event.target.files || []);
@@ -108,7 +133,7 @@ function App() {
 
   const sendMessage = async (messageText = prompt) => {
     const text = messageText.trim();
-    if (!text || isLoading) return;
+    if (!text || isLoading || !userName) return;
 
     const userMessage = {
       id: crypto.randomUUID(),
@@ -131,6 +156,8 @@ function App() {
           question: text,
           top_k: mode === "document" ? 4 : 1,
           use_documents: mode === "document",
+          session_id: sessionIdRef.current,
+          user_name: userName,
         }),
       });
 
@@ -163,12 +190,20 @@ function App() {
       ]);
     } finally {
       setIsLoading(false);
+      loadUserHistory();
     }
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
     sendMessage();
+  };
+
+  const handleNameSubmit = (event) => {
+    event.preventDefault();
+    const nextUserName = pendingUserName.trim();
+    if (!nextUserName) return;
+    setUserName(nextUserName);
   };
 
   return (
@@ -184,10 +219,38 @@ function App() {
           </div>
         </div>
 
-        <button className="new-chat" type="button" onClick={() => setMessages(starterMessages)}>
+        <button
+          className="new-chat"
+          type="button"
+          onClick={() => {
+            sessionIdRef.current = crypto.randomUUID();
+            setMessages(starterMessages);
+          }}
+        >
           <MessageSquarePlus size={18} />
           New chat
         </button>
+
+        {userName && (
+          <section className="panel user-panel">
+            <div className="panel-title">
+              <UserRound size={17} />
+              User
+            </div>
+            <div className="user-chip">
+              <strong>{userName}</strong>
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingUserName(userName);
+                  setUserName("");
+                }}
+              >
+                Change
+              </button>
+            </div>
+          </section>
+        )}
 
         <section className="panel">
           <div className="panel-title">
@@ -254,9 +317,17 @@ function App() {
             <History size={17} />
             Recent
           </div>
-          <button type="button">Project notes Q&A</button>
-          <button type="button">Proposal summary</button>
-          <button type="button">General brainstorm</button>
+          {historyError && <p className="history-note">{historyError}</p>}
+          {userStats?.recent_activity?.length ? (
+            userStats.recent_activity.slice(0, 4).map((activity) => (
+              <button type="button" key={`${activity.timestamp}-${activity.question}`}>
+                <strong>{activity.user_name || "Unknown user"}</strong>
+                <span>{activity.question}</span>
+              </button>
+            ))
+          ) : (
+            <p className="history-note">No chat history yet</p>
+          )}
         </section>
       </aside>
 
@@ -276,6 +347,28 @@ function App() {
         </header>
 
         <div className="conversation">
+          {!userName && (
+            <section className="name-gate" aria-label="User name">
+              <div>
+                <Bot size={24} />
+                <h2>Start your chat</h2>
+                <p>Enter your name so Keli Assistant can save this conversation in backend history.</p>
+              </div>
+              <form onSubmit={handleNameSubmit}>
+                <input
+                  type="text"
+                  value={pendingUserName}
+                  placeholder="Your name"
+                  onChange={(event) => setPendingUserName(event.target.value)}
+                  autoFocus
+                />
+                <button type="submit" disabled={!pendingUserName.trim()}>
+                  Continue
+                </button>
+              </form>
+            </section>
+          )}
+
           {messages.map((message) => (
             <article className={`message ${message.role}`} key={message.id}>
               <div className="avatar" aria-hidden="true">
@@ -283,7 +376,7 @@ function App() {
               </div>
               <div className="bubble">
                 <div className="message-meta">
-                  <strong>{message.role === "assistant" ? "Assistant" : "You"}</strong>
+                  <strong>{message.role === "assistant" ? "Keli Assistant" : userName || "You"}</strong>
                   <span>{message.time}</span>
                 </div>
                 <p>{message.text}</p>
@@ -292,7 +385,7 @@ function App() {
                     {message.sources.map((source) => (
                       <details key={`${source.document_id}-${source.chunk_id}`}>
                         <summary>
-                          {source.filename} · chunk {source.chunk_id} · score {source.score}
+                          {source.filename} - chunk {source.chunk_id} - score {source.score}
                         </summary>
                         <p>{source.text}</p>
                       </details>
@@ -318,7 +411,7 @@ function App() {
 
         <div className="suggestions" aria-label="Prompt suggestions">
           {suggestions.map((suggestion) => (
-            <button type="button" key={suggestion} onClick={() => sendMessage(suggestion)}>
+            <button type="button" key={suggestion} onClick={() => sendMessage(suggestion)} disabled={!userName}>
               {suggestion}
             </button>
           ))}
@@ -330,7 +423,13 @@ function App() {
           </button>
           <textarea
             value={prompt}
-            placeholder={mode === "document" ? "Ask about your uploaded document..." : "Ask a general question..."}
+            placeholder={
+              userName
+                ? mode === "document"
+                  ? "Ask about your uploaded document..."
+                  : "Ask a general question..."
+                : "Enter your name before starting the chat"
+            }
             onChange={(event) => setPrompt(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
@@ -340,7 +439,7 @@ function App() {
             }}
             rows={1}
           />
-          <button className="send-button" type="submit" disabled={!prompt.trim() || isLoading} aria-label="Send message">
+          <button className="send-button" type="submit" disabled={!prompt.trim() || isLoading || !userName} aria-label="Send message">
             <Send size={19} />
           </button>
         </form>
