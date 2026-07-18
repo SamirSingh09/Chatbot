@@ -40,7 +40,7 @@ function App() {
   const sessionIdRef = useRef(crypto.randomUUID());
   const [messages, setMessages] = useState(starterMessages);
   const [prompt, setPrompt] = useState("");
-  const [mode, setMode] = useState("document");
+  const [mode, setMode] = useState("generic");
   const [isLoading, setIsLoading] = useState(false);
   const [uploads, setUploads] = useState([]);
   const [uploadError, setUploadError] = useState("");
