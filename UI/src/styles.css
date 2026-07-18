@@ -486,9 +486,42 @@ button {
 .bubble {
   padding: 15px 16px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--surface);
-  line-height: 1.55;
+  line-height: 1.6;
+  max-width: 76ch;
+  word-break: break-word;
+  white-space: pre-wrap; /* respect user line breaks */
+}
+
+/* Assistant and user bubble color variants */
+.message.assistant .bubble {
+  background: #f2fbff;
+  border-color: rgba(23, 107, 135, 0.12);
+}
+
+.message.user .bubble {
+  background: #fff7f0;
+}
+
+/* Code and inline code styling inside messages */
+.bubble pre {
+  background: #0f1720;
+  color: #e6eef6;
+  padding: 12px;
+  border-radius: 8px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+  font-size: 0.85rem;
+  margin: 10px 0;
+}
+
+.bubble code {
+  background: rgba(23, 107, 135, 0.06);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 0.86rem;
 }
 
 .message-meta {
