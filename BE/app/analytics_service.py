@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from app.schemas import ChatRequest, UserActivity, UserStats
+from .schemas import ChatRequest, UserActivity, UserStats
 
 
 class AnalyticsService:
